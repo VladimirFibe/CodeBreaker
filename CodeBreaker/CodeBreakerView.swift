@@ -12,22 +12,37 @@ struct CodeBreakerView: View {
                     view(for: game.attempts[index])
                 }
             }
-            Button("Guess") {
-                withAnimation {
-                    game.attemptGuess()
-                }
-            }
+            
         }
         .padding()
     }
     
+    var guessButton: some View {
+        Button("Guess") {
+            withAnimation {
+                game.attemptGuess()
+            }
+        }
+        .font(.system(size: 80))
+        .minimumScaleFactor(0.1)
+    }
+    
     func view(for code: Code) -> some View {
-        
-        HStack {
+        let cornerRadius = 10.0
+        return HStack {
             ForEach(code.pegs.indices, id: \.self) { index in
-                Circle()
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .overlay {
+                        if code.pegs[index] == Code.missing {
+                            RoundedRectangle(cornerRadius: cornerRadius)
+                                .strokeBorder(Color.gray)
+                        }
+                    }
                     .foregroundStyle(code.pegs[index])
+                    .contentShape(Rectangle())
+                    .aspectRatio(contentMode: .fit)
                     .onTapGesture {
+                        print("tap")
                         if code.kind == .guess {
                             game.changeGuessPeg(at: index)
                         }
@@ -35,7 +50,12 @@ struct CodeBreakerView: View {
 
             }
             
-            MatchMarkers(matches: [.exact, .inexact, .nomatch, .exact])
+            MatchMarkers(matches: code.matches)
+                .overlay {
+                    if code.kind == .guess {
+                        guessButton
+                    }
+                }
         }
     }
 }

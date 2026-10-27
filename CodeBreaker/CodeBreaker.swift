@@ -4,23 +4,62 @@ typealias Peg = Color
 
 struct Code {
     var kind: Kind
-    var pegs: [Peg] = [.red, .green, .blue, .yellow]
+    var pegs: [Peg] = Array(repeating: Code.missing, count: 4)
     
-    enum Kind {
+    enum Kind: Equatable {
         case master
         case guess
-        case attempt
+        case attempt([Match])
         case unkonwn
     }
     
+    var matches: [Match] {
+        switch kind {
+        case .attempt(let matches): return matches
+        default: return []
+        }
+    }
+    
+    mutating func randomize(from pegChoices: [Peg]) {
+        for index in pegChoices.indices {
+            pegs[index] = pegChoices.randomElement() ?? Code.missing
+        }
+    }
+    
     static let missing: Peg = .clear
+    
+    func match(against otherCode: Code) -> [Match] {
+        var results: [Match] = Array(repeating: .nomatch, count: pegs.count)
+        var pegsToMatch = otherCode.pegs
+        for index in pegs.indices.reversed() {
+            if pegsToMatch.count > index, pegsToMatch[index] == pegs[index] {
+                results[index] = .exact
+                pegsToMatch.remove(at: index)
+            }
+        }
+        for index in pegs.indices {
+            if results[index] != .exact {
+                if let matchIndex = pegsToMatch.firstIndex(of: pegs[index]) {
+                    results[index] = .inexact
+                    pegsToMatch.remove(at: matchIndex)
+                }
+            }
+        }
+        return results
+    }
 }
 
 struct CodeBreaker {
     var masterCode = Code(kind: .master)
     var guess = Code(kind: .guess)
-    var attempts: [Code] = [Code(kind: .attempt, pegs: [.red, .yellow, .yellow, .green])]
-    var pegChoices: [Peg] = [.red, .green, .blue, .yellow]
+    var attempts: [Code] = []
+    var pegChoices: [Peg]
+    
+    init(pegChoices: [Peg] = [.red, .green, .blue, .yellow]) {
+        self.pegChoices = pegChoices
+        masterCode.randomize(from: pegChoices)
+        print(masterCode)
+    }
     
     mutating func changeGuessPeg(at index: Int) {
         let existingPeg = guess.pegs[index]
@@ -34,7 +73,7 @@ struct CodeBreaker {
     
     mutating func attemptGuess() {
         var attempt = guess
-        attempt.kind = .attempt
+        attempt.kind = .attempt(guess.match(against: masterCode))
         attempts.append(attempt)
     }
 }
